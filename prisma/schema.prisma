@@ -1,0 +1,1130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id               String   @id @default(uuid()) @db.Char(36)
+  code             String   @unique @db.VarChar(20)
+  name             String   @db.VarChar(255)
+  address          String?  @db.Text
+  phone            String?  @db.VarChar(30)
+  email            String?  @db.VarChar(150)
+  taxRegistration  String?  @db.VarChar(50)
+  currencyCode     String   @default("USD") @db.VarChar(10)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdBy        String?  @db.Char(36)
+  updatedBy        String?  @db.Char(36)
+
+  branches         Branch[]
+  financialYears   FinancialYear[]
+  users            User[]
+  systemConfigs    SystemConfiguration[]
+  accountCategories AccountCategory[]
+  accountSubcategories AccountSubcategory[]
+  accountTypes     AccountType[]
+  chartOfAccounts  ChartOfAccount[]
+  departments      Department[]
+  journalEntries   JournalEntry[]
+  ledgerPostings   LedgerPosting[]
+  debtors          Debtor[]
+  creditors        Creditor[]
+  debtorInvoices   DebtorInvoice[]
+  creditorInvoices  CreditorInvoice[]
+  debtorCreditNotes DebtorCreditNote[]
+  creditorNotes    CreditorNote[]
+  receipts         Receipt[]
+  supplierPayments SupplierPayment[]
+  allocations     Allocation[]
+  bankAccounts     BankAccount[]
+  bankTransactions BankTransaction[]
+  paymentVouchers  PaymentVoucher[]
+  cheques          Cheque[]
+  bankReconciliations BankReconciliation[]
+  pmsConnections   PmsConnection[]
+  pmsAccountMappings PmsAccountMapping[]
+  pmsDepartmentMappings PmsDepartmentMapping[]
+  pmsImportBatches PmsImportBatch[]
+  pmsImportTransactions PmsImportTransaction[]
+  pmsReconciliations PmsReconciliation[]
+
+  @@map("companies")
+}
+
+model Branch {
+  id          String   @id @default(uuid()) @db.Char(36)
+  companyId   String   @db.Char(36)
+  code        String   @db.VarChar(20)
+  name        String   @db.VarChar(255)
+  address     String?  @db.Text
+  phone       String?  @db.VarChar(30)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  @db.Char(36)
+
+  company     Company  @relation(fields: [companyId], references: [id])
+  users       User[]
+  chartOfAccounts ChartOfAccount[]
+  journalEntries JournalEntry[]
+  ledgerPostings LedgerPosting[]
+  debtors     Debtor[]
+  creditors   Creditor[]
+  bankAccounts BankAccount[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("branches")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Char(36)
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Char(36)
+  code        String   @unique @db.VarChar(100)
+  module      String   @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Char(36)
+  companyId    String    @db.Char(36)
+  branchId     String?   @db.Char(36)
+  username     String    @unique @db.VarChar(50)
+  email        String    @unique @db.VarChar(150)
+  passwordHash String    @db.VarChar(255)
+  firstName    String    @db.VarChar(100)
+  lastName     String    @db.VarChar(100)
+  phone        String?   @db.VarChar(30)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?   @db.Char(36)
+  updatedBy    String?   @db.Char(36)
+
+  company      Company   @relation(fields: [companyId], references: [id])
+  branch       Branch?   @relation(fields: [branchId], references: [id])
+  userRoles    UserRole[]
+  auditLogs    AuditLog[]
+
+  @@index([companyId])
+  @@index([email])
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String   @db.Char(36)
+  roleId    String   @db.Char(36)
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Char(36)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Char(36)
+  roleId       String   @db.Char(36)
+  permissionId String   @db.Char(36)
+  createdAt    DateTime @default(now())
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@map("role_permissions")
+}
+
+model FinancialYear {
+  id          String   @id @default(uuid()) @db.Char(36)
+  companyId   String   @db.Char(36)
+  yearCode    String   @db.VarChar(20)
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  status      String   @default("OPEN") @db.VarChar(20)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  @db.Char(36)
+  closedAt    DateTime?
+  closedBy    String?  @db.Char(36)
+
+  company           Company          @relation(fields: [companyId], references: [id])
+  accountingPeriods AccountingPeriod[]
+  journalEntries    JournalEntry[]
+  ledgerPostings    LedgerPosting[]
+
+  @@unique([companyId, yearCode])
+  @@index([companyId])
+  @@map("financial_years")
+}
+
+model AccountingPeriod {
+  id              String   @id @default(uuid()) @db.Char(36)
+  financialYearId String   @db.Char(36)
+  periodNumber    Int
+  name            String   @db.VarChar(50)
+  startDate       DateTime @db.Date
+  endDate         DateTime @db.Date
+  status          String   @default("OPEN") @db.VarChar(20)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?  @db.Char(36)
+  closedAt        DateTime?
+  closedBy        String?  @db.Char(36)
+
+  financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
+  journalEntries  JournalEntry[]
+  ledgerPostings  LedgerPosting[]
+
+  @@unique([financialYearId, periodNumber])
+  @@index([financialYearId])
+  @@map("accounting_periods")
+}
+
+model AccountCategory {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  categoryCode      String   @db.VarChar(20)
+  categoryName      String   @db.VarChar(100)
+  accountNumberStart Int     @db.Int
+  accountNumberEnd   Int     @db.Int
+  description       String?  @db.Text
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company            @relation(fields: [companyId], references: [id])
+  subcategories     AccountSubcategory[]
+  chartOfAccounts   ChartOfAccount[]
+
+  @@unique([companyId, categoryCode])
+  @@index([companyId])
+  @@map("account_categories")
+}
+
+model AccountSubcategory {
+  id              String   @id @default(uuid()) @db.Char(36)
+  companyId       String   @db.Char(36)
+  categoryId      String   @db.Char(36)
+  subcategoryCode String   @db.VarChar(20)
+  subcategoryName String   @db.VarChar(120)
+  description     String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id])
+  category        AccountCategory  @relation(fields: [categoryId], references: [id])
+  chartOfAccounts ChartOfAccount[]
+
+  @@unique([categoryId, subcategoryCode])
+  @@index([categoryId])
+  @@map("account_subcategories")
+}
+
+model AccountType {
+  id          String   @id @default(uuid()) @db.Char(36)
+  companyId   String   @db.Char(36)
+  typeCode    String   @db.VarChar(20)
+  typeName    String   @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company          @relation(fields: [companyId], references: [id])
+  chartOfAccounts ChartOfAccount[]
+
+  @@unique([companyId, typeCode])
+  @@index([companyId])
+  @@map("account_types")
+}
+
+model ChartOfAccount {
+  id             String   @id @default(uuid()) @db.Char(36)
+  companyId      String   @db.Char(36)
+  branchId       String?  @db.Char(36)
+  categoryId     String   @db.Char(36)
+  subcategoryId  String?  @db.Char(36)
+  accountTypeId  String?  @db.Char(36)
+  accountCode    String   @db.VarChar(50)
+  accountName    String   @db.VarChar(200)
+  description    String?  @db.Text
+  isActive       Boolean  @default(true)
+  isSystemAccount Boolean @default(false)
+  createdBy      String?  @db.Char(36)
+  updatedBy      String?  @db.Char(36)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company        Company           @relation(fields: [companyId], references: [id])
+  branch         Branch?           @relation(fields: [branchId], references: [id])
+  category       AccountCategory   @relation(fields: [categoryId], references: [id])
+  subcategory    AccountSubcategory? @relation(fields: [subcategoryId], references: [id])
+  accountType    AccountType?      @relation(fields: [accountTypeId], references: [id])
+  departments    AccountDepartment[]
+  journalEntryLines JournalEntryLine[]
+  ledgerPostings LedgerPosting[]
+  debtors        Debtor[]
+  creditors      Creditor[]
+  bankAccounts   BankAccount[] @relation("BankAccountGL")
+  pmsAccountMappings PmsAccountMapping[]
+
+  @@unique([companyId, accountCode])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([accountTypeId])
+  @@map("chart_of_accounts")
+}
+
+model Department {
+  id              String   @id @default(uuid()) @db.Char(36)
+  companyId       String   @db.Char(36)
+  departmentCode  String   @db.VarChar(20)
+  departmentName  String   @db.VarChar(120)
+  description     String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id])
+  subDepartments  SubDepartment[]
+  accountMappings AccountDepartment[]
+  journalEntryLines JournalEntryLine[]
+  ledgerPostings LedgerPosting[]
+  pmsAccountMappings PmsAccountMapping[]
+  pmsDepartmentMappings PmsDepartmentMapping[]
+
+  @@unique([companyId, departmentCode])
+  @@index([companyId])
+  @@map("departments")
+}
+
+model SubDepartment {
+  id                String   @id @default(uuid()) @db.Char(36)
+  departmentId      String   @db.Char(36)
+  subDepartmentCode String   @db.VarChar(20)
+  subDepartmentName String   @db.VarChar(120)
+  description       String?  @db.Text
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  department        Department         @relation(fields: [departmentId], references: [id])
+  accountMappings   AccountDepartment[]
+  journalEntryLines JournalEntryLine[]
+  ledgerPostings    LedgerPosting[]
+
+  @@unique([departmentId, subDepartmentCode])
+  @@index([departmentId])
+  @@map("sub_departments")
+}
+
+model AccountDepartment {
+  id             String   @id @default(uuid()) @db.Char(36)
+  accountId      String   @db.Char(36)
+  departmentId   String   @db.Char(36)
+  subDepartmentId String?  @db.Char(36)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  account        ChartOfAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  department     Department      @relation(fields: [departmentId], references: [id])
+  subDepartment  SubDepartment?  @relation(fields: [subDepartmentId], references: [id])
+
+  @@unique([accountId, departmentId, subDepartmentId])
+  @@index([accountId])
+  @@index([departmentId])
+  @@map("account_departments")
+}
+
+model JournalEntry {
+  id                 String    @id @default(uuid()) @db.Char(36)
+  companyId          String    @db.Char(36)
+  branchId           String?   @db.Char(36)
+  journalNumber      String    @db.VarChar(50)
+  referenceNumber    String?   @db.VarChar(80)
+  journalDate        DateTime  @db.Date
+  financialYearId    String?   @db.Char(36)
+  accountingPeriodId String?   @db.Char(36)
+  description        String?   @db.Text
+  status             String    @default("DRAFT") @db.VarChar(30)
+  totalDebit         Decimal   @default("0.00") @db.Decimal(18, 2)
+  totalCredit        Decimal   @default("0.00") @db.Decimal(18, 2)
+  sourceType         String?   @db.VarChar(50)
+  sourceReferenceId  String?   @db.VarChar(100)
+  createdBy          String?   @db.Char(36)
+  submittedBy        String?   @db.Char(36)
+  approvedBy         String?   @db.Char(36)
+  postedBy           String?   @db.Char(36)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  postedAt           DateTime?
+  reversalOfJournalId String?  @db.Char(36)
+
+  company          Company          @relation(fields: [companyId], references: [id])
+  branch           Branch?          @relation(fields: [branchId], references: [id])
+  financialYear    FinancialYear?   @relation(fields: [financialYearId], references: [id])
+  accountingPeriod AccountingPeriod? @relation(fields: [accountingPeriodId], references: [id])
+  lines            JournalEntryLine[]
+  ledgerPostings   LedgerPosting[]
+  reversalOf       JournalEntry?    @relation("JournalEntryReversal", fields: [reversalOfJournalId], references: [id])
+  reversals        JournalEntry[]   @relation("JournalEntryReversal")
+
+  @@unique([companyId, journalNumber])
+  @@index([companyId])
+  @@index([journalDate])
+  @@index([status])
+  @@index([referenceNumber])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id               String    @id @default(uuid()) @db.Char(36)
+  journalEntryId   String    @db.Char(36)
+  lineNumber       Int
+  accountId        String    @db.Char(36)
+  departmentId     String?   @db.Char(36)
+  subDepartmentId  String?   @db.Char(36)
+  description      String?   @db.Text
+  debitAmount      Decimal   @default("0.00") @db.Decimal(18, 2)
+  creditAmount     Decimal   @default("0.00") @db.Decimal(18, 2)
+  currencyCode     String    @default("USD") @db.VarChar(10)
+  exchangeRate     Decimal?  @db.Decimal(18, 6)
+  baseDebitAmount  Decimal   @default("0.00") @db.Decimal(18, 2)
+  baseCreditAmount Decimal   @default("0.00") @db.Decimal(18, 2)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  journalEntry    JournalEntry    @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account         ChartOfAccount  @relation(fields: [accountId], references: [id])
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  subDepartment  SubDepartment?  @relation(fields: [subDepartmentId], references: [id])
+  ledgerPostings  LedgerPosting[]
+
+  @@unique([journalEntryId, lineNumber])
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([departmentId])
+  @@map("journal_entry_lines")
+}
+
+model LedgerPosting {
+  id                 String    @id @default(uuid()) @db.Char(36)
+  companyId          String    @db.Char(36)
+  branchId           String?   @db.Char(36)
+  journalEntryId     String    @db.Char(36)
+  journalEntryLineId String    @db.Char(36)
+  accountId          String    @db.Char(36)
+  accountingPeriodId String?   @db.Char(36)
+  financialYearId    String?   @db.Char(36)
+  postingDate        DateTime  @db.Date
+  referenceNumber    String    @db.VarChar(80)
+  description        String?   @db.Text
+  debitAmount        Decimal   @default("0.00") @db.Decimal(18, 2)
+  creditAmount       Decimal   @default("0.00") @db.Decimal(18, 2)
+  currencyCode       String    @default("USD") @db.VarChar(10)
+  exchangeRate       Decimal?  @db.Decimal(18, 6)
+  baseDebitAmount    Decimal   @default("0.00") @db.Decimal(18, 2)
+  baseCreditAmount   Decimal   @default("0.00") @db.Decimal(18, 2)
+  departmentId       String?   @db.Char(36)
+  subDepartmentId    String?   @db.Char(36)
+  createdAt          DateTime  @default(now())
+
+  company          Company          @relation(fields: [companyId], references: [id])
+  branch           Branch?          @relation(fields: [branchId], references: [id])
+  journalEntry     JournalEntry     @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  journalEntryLine JournalEntryLine @relation(fields: [journalEntryLineId], references: [id], onDelete: Cascade)
+  account          ChartOfAccount   @relation(fields: [accountId], references: [id])
+  accountingPeriod AccountingPeriod? @relation(fields: [accountingPeriodId], references: [id])
+  financialYear    FinancialYear?   @relation(fields: [financialYearId], references: [id])
+  department       Department?     @relation(fields: [departmentId], references: [id])
+  subDepartment    SubDepartment?  @relation(fields: [subDepartmentId], references: [id])
+
+  @@unique([journalEntryId, journalEntryLineId])
+  @@index([companyId, postingDate])
+  @@index([accountId, postingDate])
+  @@index([financialYearId])
+  @@index([accountingPeriodId])
+  @@index([referenceNumber])
+  @@map("ledger_postings")
+}
+
+model Debtor {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  companyId             String   @db.Char(36)
+  branchId              String?  @db.Char(36)
+  debtorCode            String   @db.VarChar(50)
+  debtorName            String   @db.VarChar(200)
+  debtorType            String   @db.VarChar(50)
+  contactPerson         String?  @db.VarChar(150)
+  email                 String?  @db.VarChar(150)
+  phone                 String?  @db.VarChar(30)
+  address               String?  @db.Text
+  taxRegistrationNumber String?  @db.VarChar(100)
+  creditLimit           Decimal  @default("0.00") @db.Decimal(18, 2)
+  creditPeriodDays      Int      @default(30)
+  currencyCode          String   @default("USD") @db.VarChar(10)
+  accountId             String?  @db.Char(36)
+  isActive              Boolean  @default(true)
+  createdBy             String?  @db.Char(36)
+  updatedBy             String?  @db.Char(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company             Company            @relation(fields: [companyId], references: [id])
+  branch              Branch?            @relation(fields: [branchId], references: [id])
+  account             ChartOfAccount?    @relation(fields: [accountId], references: [id])
+  invoices            DebtorInvoice[]
+  creditNotes         DebtorCreditNote[]
+  receipts            Receipt[]
+
+  @@unique([companyId, debtorCode])
+  @@index([companyId])
+  @@index([branchId])
+  @@map("debtors")
+}
+
+model Creditor {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  companyId             String   @db.Char(36)
+  branchId              String?  @db.Char(36)
+  creditorCode          String   @db.VarChar(50)
+  creditorName          String   @db.VarChar(200)
+  creditorType          String   @db.VarChar(50)
+  contactPerson         String?  @db.VarChar(150)
+  email                 String?  @db.VarChar(150)
+  phone                 String?  @db.VarChar(30)
+  address               String?  @db.Text
+  taxRegistrationNumber String?  @db.VarChar(100)
+  creditLimit           Decimal  @default("0.00") @db.Decimal(18, 2)
+  creditPeriodDays      Int      @default(30)
+  currencyCode          String   @default("USD") @db.VarChar(10)
+  accountId             String?  @db.Char(36)
+  isActive              Boolean  @default(true)
+  createdBy             String?  @db.Char(36)
+  updatedBy             String?  @db.Char(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company             Company             @relation(fields: [companyId], references: [id])
+  branch              Branch?             @relation(fields: [branchId], references: [id])
+  account             ChartOfAccount?     @relation(fields: [accountId], references: [id])
+  invoices            CreditorInvoice[]
+  adjustmentNotes     CreditorNote[]
+  payments            SupplierPayment[]
+  paymentVouchers     PaymentVoucher[]
+
+  @@unique([companyId, creditorCode])
+  @@index([companyId])
+  @@index([branchId])
+  @@map("creditors")
+}
+
+model DebtorInvoice {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  debtorId          String   @db.Char(36)
+  invoiceNumber     String   @db.VarChar(80)
+  invoiceDate       DateTime @db.Date
+  dueDate           DateTime @db.Date
+  referenceNumber   String?  @db.VarChar(80)
+  description       String?  @db.Text
+  subtotal          Decimal  @default("0.00") @db.Decimal(18, 2)
+  taxAmount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  totalAmount       Decimal  @default("0.00") @db.Decimal(18, 2)
+  allocatedAmount   Decimal  @default("0.00") @db.Decimal(18, 2)
+  outstandingAmount Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode      String   @default("USD") @db.VarChar(10)
+  status            String   @default("DRAFT") @db.VarChar(30)
+  journalEntryId    String?  @db.Char(36)
+  createdBy         String?  @db.Char(36)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company           @relation(fields: [companyId], references: [id])
+  debtor             Debtor            @relation(fields: [debtorId], references: [id])
+  creditNotes       DebtorCreditNote[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([debtorId])
+  @@index([companyId, status])
+  @@map("debtor_invoices")
+}
+
+model CreditorInvoice {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  creditorId        String   @db.Char(36)
+  invoiceNumber     String   @db.VarChar(80)
+  invoiceDate       DateTime @db.Date
+  dueDate           DateTime @db.Date
+  referenceNumber   String?  @db.VarChar(80)
+  description       String?  @db.Text
+  subtotal          Decimal  @default("0.00") @db.Decimal(18, 2)
+  taxAmount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  totalAmount       Decimal  @default("0.00") @db.Decimal(18, 2)
+  allocatedAmount   Decimal  @default("0.00") @db.Decimal(18, 2)
+  outstandingAmount Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode      String   @default("USD") @db.VarChar(10)
+  status            String   @default("DRAFT") @db.VarChar(30)
+  journalEntryId    String?  @db.Char(36)
+  createdBy         String?  @db.Char(36)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company           @relation(fields: [companyId], references: [id])
+  creditor          Creditor          @relation(fields: [creditorId], references: [id])
+  adjustments       CreditorNote[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([creditorId])
+  @@index([companyId, status])
+  @@map("creditor_invoices")
+}
+
+model DebtorCreditNote {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  debtorId          String   @db.Char(36)
+  invoiceId         String?  @db.Char(36)
+  noteNumber        String   @db.VarChar(80)
+  noteDate          DateTime @db.Date
+  reason            String?  @db.VarChar(200)
+  subtotal          Decimal  @default("0.00") @db.Decimal(18, 2)
+  taxAmount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  totalAmount       Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode      String   @default("USD") @db.VarChar(10)
+  status            String   @default("DRAFT") @db.VarChar(30)
+  journalEntryId    String?  @db.Char(36)
+  createdBy         String?  @db.Char(36)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company          @relation(fields: [companyId], references: [id])
+  debtor            Debtor           @relation(fields: [debtorId], references: [id])
+  invoice           DebtorInvoice?   @relation(fields: [invoiceId], references: [id])
+
+  @@unique([companyId, noteNumber])
+  @@index([debtorId])
+  @@map("debtor_credit_notes")
+}
+
+model CreditorNote {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  creditorId        String   @db.Char(36)
+  invoiceId         String?  @db.Char(36)
+  noteNumber        String   @db.VarChar(80)
+  noteDate          DateTime @db.Date
+  noteType          String   @default("CREDIT") @db.VarChar(20)
+  reason            String?  @db.VarChar(200)
+  subtotal          Decimal  @default("0.00") @db.Decimal(18, 2)
+  taxAmount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  totalAmount       Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode      String   @default("USD") @db.VarChar(10)
+  status            String   @default("DRAFT") @db.VarChar(30)
+  journalEntryId    String?  @db.Char(36)
+  createdBy         String?  @db.Char(36)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company          @relation(fields: [companyId], references: [id])
+  creditor          Creditor         @relation(fields: [creditorId], references: [id])
+  invoice           CreditorInvoice? @relation(fields: [invoiceId], references: [id])
+
+  @@unique([companyId, noteNumber])
+  @@index([creditorId])
+  @@map("creditor_notes")
+}
+
+model Receipt {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  debtorId          String   @db.Char(36)
+  receiptNumber     String   @db.VarChar(80)
+  receiptDate       DateTime @db.Date
+  amount            Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode      String   @default("USD") @db.VarChar(10)
+  paymentMethod     String   @default("CASH") @db.VarChar(50)
+  bankAccountId     String?  @db.Char(36)
+  referenceNumber   String?  @db.VarChar(80)
+  description       String?  @db.Text
+  status            String   @default("DRAFT") @db.VarChar(30)
+  journalEntryId    String?  @db.Char(36)
+  createdBy         String?  @db.Char(36)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company      @relation(fields: [companyId], references: [id])
+  debtor            Debtor       @relation(fields: [debtorId], references: [id])
+
+  @@unique([companyId, receiptNumber])
+  @@index([debtorId])
+  @@map("receipts")
+}
+
+model BankAccount {
+  id             String   @id @default(uuid()) @db.Char(36)
+  companyId      String   @db.Char(36)
+  branchId       String?  @db.Char(36)
+  bankName       String   @db.VarChar(150)
+  branch         String?  @db.VarChar(150)
+  accountName    String   @db.VarChar(150)
+  accountNumber  String   @db.VarChar(80)
+  currencyCode   String   @default("USD") @db.VarChar(10)
+  openingBalance Decimal  @default("0.00") @db.Decimal(18, 2)
+  currentBalance Decimal  @default("0.00") @db.Decimal(18, 2)
+  glAccountId    String   @db.Char(36)
+  status         String   @default("ACTIVE") @db.VarChar(20)
+  isActive       Boolean  @default(true)
+  createdBy      String?  @db.Char(36)
+  updatedBy      String?  @db.Char(36)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company        Company          @relation(fields: [companyId], references: [id])
+  branchRef      Branch?          @relation(fields: [branchId], references: [id])
+  glAccount      ChartOfAccount   @relation("BankAccountGL", fields: [glAccountId], references: [id])
+  transactions   BankTransaction[]
+  cheques        Cheque[]
+  paymentVouchers PaymentVoucher[]
+  reconciliations BankReconciliation[]
+
+  @@unique([companyId, accountNumber])
+  @@index([companyId])
+  @@index([glAccountId])
+  @@map("bank_accounts")
+}
+
+model BankTransaction {
+  id              String   @id @default(uuid()) @db.Char(36)
+  companyId       String   @db.Char(36)
+  bankAccountId   String   @db.Char(36)
+  transactionType String   @db.VarChar(30)
+  referenceNumber String   @db.VarChar(80)
+  transactionDate DateTime @db.Date
+  valueDate       DateTime @db.Date
+  description     String?  @db.Text
+  amount          Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode    String   @default("USD") @db.VarChar(10)
+  exchangeRate    Decimal? @db.Decimal(18, 6)
+  baseAmount      Decimal  @default("0.00") @db.Decimal(18, 2)
+  direction       String   @default("DEBIT") @db.VarChar(20)
+  status          String   @default("DRAFT") @db.VarChar(30)
+  createdBy       String?  @db.Char(36)
+  approvedBy      String?  @db.Char(36)
+  processedBy     String?  @db.Char(36)
+  journalEntryId  String?  @db.Char(36)
+  relatedTransactionId String? @db.Char(36)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id])
+  bankAccount     BankAccount      @relation(fields: [bankAccountId], references: [id])
+  reconciliationItems BankReconciliationItem[]
+
+  @@unique([companyId, referenceNumber])
+  @@index([bankAccountId])
+  @@index([transactionDate])
+  @@index([status])
+  @@map("bank_transactions")
+}
+
+model PaymentVoucher {
+  id             String   @id @default(uuid()) @db.Char(36)
+  companyId      String   @db.Char(36)
+  bankAccountId  String?  @db.Char(36)
+  creditorId     String?  @db.Char(36)
+  voucherNumber  String   @db.VarChar(80)
+  paymentType    String   @default("GENERAL") @db.VarChar(30)
+  paymentMethod  String   @default("BANK_TRANSFER") @db.VarChar(30)
+  paymentDate    DateTime @db.Date
+  amount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode   String   @default("USD") @db.VarChar(10)
+  description    String?  @db.Text
+  status         String   @default("DRAFT") @db.VarChar(30)
+  submittedBy    String?  @db.Char(36)
+  approvedBy     String?  @db.Char(36)
+  processedBy    String?  @db.Char(36)
+  journalEntryId String?  @db.Char(36)
+  createdBy      String?  @db.Char(36)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company        Company      @relation(fields: [companyId], references: [id])
+  bankAccount    BankAccount? @relation(fields: [bankAccountId], references: [id])
+  creditor       Creditor?    @relation(fields: [creditorId], references: [id])
+
+  @@unique([companyId, voucherNumber])
+  @@index([creditorId])
+  @@index([status])
+  @@map("payment_vouchers")
+}
+
+model Cheque {
+  id             String   @id @default(uuid()) @db.Char(36)
+  companyId      String   @db.Char(36)
+  bankAccountId  String   @db.Char(36)
+  chequeNumber   String   @db.VarChar(80)
+  payee          String   @db.VarChar(200)
+  amount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  issueDate      DateTime @db.Date
+  dueDate        DateTime @db.Date
+  status         String   @default("PENDING") @db.VarChar(20)
+  description    String?  @db.Text
+  createdBy      String?  @db.Char(36)
+  approvedBy     String?  @db.Char(36)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company        Company      @relation(fields: [companyId], references: [id])
+  bankAccount    BankAccount  @relation(fields: [bankAccountId], references: [id])
+
+  @@unique([companyId, chequeNumber])
+  @@index([bankAccountId])
+  @@index([status])
+  @@map("cheques")
+}
+
+model BankReconciliation {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  companyId             String   @db.Char(36)
+  bankAccountId         String   @db.Char(36)
+  statementDate         DateTime @db.Date
+  statementOpeningBalance Decimal @default("0.00") @db.Decimal(18, 2)
+  statementClosingBalance Decimal @default("0.00") @db.Decimal(18, 2)
+  importedFileName      String?  @db.VarChar(255)
+  status                String   @default("OPEN") @db.VarChar(20)
+  createdBy             String?  @db.Char(36)
+  completedBy           String?  @db.Char(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company              Company                @relation(fields: [companyId], references: [id])
+  bankAccount          BankAccount            @relation(fields: [bankAccountId], references: [id])
+  items                BankReconciliationItem[]
+
+  @@index([bankAccountId])
+  @@index([status])
+  @@map("bank_reconciliations")
+}
+
+model BankReconciliationItem {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  reconciliationId    String   @db.Char(36)
+  bankTransactionId   String?  @db.Char(36)
+  itemType            String   @default("MANUAL") @db.VarChar(20)
+  referenceNumber     String?  @db.VarChar(80)
+  transactionDate     DateTime @db.Date
+  description         String?  @db.Text
+  amount              Decimal  @default("0.00") @db.Decimal(18, 2)
+  direction           String   @default("DEBIT") @db.VarChar(20)
+  matchStatus         String   @default("UNMATCHED") @db.VarChar(20)
+  createdAt           DateTime @default(now())
+
+  reconciliation     BankReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  bankTransaction     BankTransaction?    @relation(fields: [bankTransactionId], references: [id])
+
+  @@index([reconciliationId])
+  @@index([bankTransactionId])
+  @@map("bank_reconciliation_items")
+}
+
+model SupplierPayment {
+  id                String   @id @default(uuid()) @db.Char(36)
+  companyId         String   @db.Char(36)
+  creditorId        String   @db.Char(36)
+  paymentNumber     String   @db.VarChar(80)
+  paymentDate       DateTime @db.Date
+  amount            Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode      String   @default("USD") @db.VarChar(10)
+  paymentMethod     String   @default("BANK") @db.VarChar(50)
+  bankAccountId     String?  @db.Char(36)
+  referenceNumber   String?  @db.VarChar(80)
+  description       String?  @db.Text
+  status            String   @default("DRAFT") @db.VarChar(30)
+  journalEntryId    String?  @db.Char(36)
+  createdBy         String?  @db.Char(36)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company           Company      @relation(fields: [companyId], references: [id])
+  creditor          Creditor     @relation(fields: [creditorId], references: [id])
+
+  @@unique([companyId, paymentNumber])
+  @@index([creditorId])
+  @@map("supplier_payments")
+}
+
+model Allocation {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  companyId             String   @db.Char(36)
+  allocationNumber      String   @db.VarChar(80)
+  allocationDate        DateTime @db.Date
+  sourceTransactionType String   @db.VarChar(50)
+  sourceTransactionId   String   @db.VarChar(36)
+  targetTransactionType String   @db.VarChar(50)
+  targetTransactionId   String   @db.VarChar(36)
+  allocatedAmount       Decimal  @default("0.00") @db.Decimal(18, 2)
+  currencyCode          String   @default("USD") @db.VarChar(10)
+  status                String   @default("POSTED") @db.VarChar(30)
+  createdBy             String?  @db.Char(36)
+  createdAt             DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, allocationNumber])
+  @@index([companyId])
+  @@index([sourceTransactionType, sourceTransactionId])
+  @@index([targetTransactionType, targetTransactionId])
+  @@map("allocations")
+}
+
+model PmsConnection {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  companyId             String   @db.Char(36)
+  name                  String   @db.VarChar(120)
+  connectionType        String   @db.VarChar(30)
+  host                  String?  @db.VarChar(255)
+  port                  Int?
+  databaseName          String?  @db.VarChar(120)
+  username              String?  @db.VarChar(120)
+  passwordHash          String?  @db.VarChar(255)
+  apiBaseUrl            String?  @db.VarChar(255)
+  apiKeyHash            String?  @db.VarChar(255)
+  isActive              Boolean  @default(true)
+  syncEnabled           Boolean  @default(false)
+  connectionStatus      String   @default("DISCONNECTED") @db.VarChar(30)
+  businessDateMode      String   @default("LOCAL") @db.VarChar(30)
+  sourceSystemIdentifier String? @db.VarChar(100)
+  lastTestedAt          DateTime?
+  lastSyncedAt          DateTime?
+  createdBy             String?  @db.Char(36)
+  updatedBy             String?  @db.Char(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company           Company            @relation(fields: [companyId], references: [id])
+  importBatches     PmsImportBatch[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("pms_connections")
+}
+
+model PmsAccountMapping {
+  id                    String   @id @default(uuid()) @db.Char(36)
+  companyId             String   @db.Char(36)
+  sourceType            String   @db.VarChar(50)
+  sourceCode            String   @db.VarChar(80)
+  accountId             String   @db.Char(36)
+  departmentId          String?  @db.Char(36)
+  taxAccountId          String?  @db.Char(36)
+  serviceChargeAccountId String? @db.Char(36)
+  advanceAccountId      String?  @db.Char(36)
+  debtorControlAccountId String? @db.Char(36)
+  bankAccountId         String?  @db.Char(36)
+  isActive              Boolean  @default(true)
+  effectiveFrom         DateTime? @db.Date
+  effectiveTo           DateTime? @db.Date
+  notes                 String?  @db.Text
+  createdBy             String?  @db.Char(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company              Company         @relation(fields: [companyId], references: [id])
+  account              ChartOfAccount  @relation(fields: [accountId], references: [id])
+  department           Department?     @relation(fields: [departmentId], references: [id])
+
+  @@unique([companyId, sourceType, sourceCode], map: "pms_account_mapping_company_source_key")
+  @@index([companyId, sourceType], map: "pms_account_mapping_company_type_idx")
+  @@map("pms_account_mappings")
+}
+
+model PmsDepartmentMapping {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  companyId           String   @db.Char(36)
+  sourceDepartmentCode String  @db.VarChar(50)
+  departmentId        String   @db.Char(36)
+  subDepartmentId     String?  @db.Char(36)
+  isActive            Boolean  @default(true)
+  notes               String?  @db.Text
+  createdBy           String?  @db.Char(36)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company            Company         @relation(fields: [companyId], references: [id])
+  department         Department      @relation(fields: [departmentId], references: [id])
+
+  @@unique([companyId, sourceDepartmentCode], map: "pms_department_mapping_company_code_key")
+  @@index([companyId], map: "pms_department_mapping_company_idx")
+  @@map("pms_department_mappings")
+}
+
+model PmsImportBatch {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  companyId          String   @db.Char(36)
+  connectionId       String   @db.Char(36)
+  batchNumber        String   @db.VarChar(80)
+  sourceSystem       String   @db.VarChar(50)
+  businessDateStart  DateTime? @db.Date
+  businessDateEnd    DateTime? @db.Date
+  totalRecords       Int      @default(0)
+  importedRecords    Int      @default(0)
+  failedRecords      Int      @default(0)
+  duplicateRecords    Int      @default(0)
+  totalDebit         Decimal  @default("0.00") @db.Decimal(18, 2)
+  totalCredit        Decimal  @default("0.00") @db.Decimal(18, 2)
+  status             String   @default("CREATED") @db.VarChar(30)
+  createdBy          String?  @db.Char(36)
+  approvedBy         String?  @db.Char(36)
+  postedBy           String?  @db.Char(36)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  approvedAt         DateTime?
+  postedAt           DateTime?
+
+  company            Company             @relation(fields: [companyId], references: [id])
+  connection         PmsConnection       @relation(fields: [connectionId], references: [id])
+  transactions       PmsImportTransaction[]
+
+  @@unique([companyId, batchNumber])
+  @@index([companyId, status])
+  @@map("pms_import_batches")
+}
+
+model PmsImportTransaction {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  companyId           String   @db.Char(36)
+  batchId             String   @db.Char(36)
+  connectionId        String?  @db.Char(36)
+  sourceTransactionId String   @db.VarChar(100)
+  sourceType          String   @db.VarChar(50)
+  businessDate        DateTime @db.Date
+  transactionDate     DateTime? @db.DateTime(0)
+  guestReference      String?  @db.VarChar(120)
+  department          String?  @db.VarChar(100)
+  currencyCode        String   @default("USD") @db.VarChar(10)
+  grossAmount         Decimal  @default("0.00") @db.Decimal(18, 2)
+  taxAmount           Decimal  @default("0.00") @db.Decimal(18, 2)
+  serviceCharge       Decimal  @default("0.00") @db.Decimal(18, 2)
+  discount            Decimal  @default("0.00") @db.Decimal(18, 2)
+  netAmount           Decimal  @default("0.00") @db.Decimal(18, 2)
+  validationStatus    String   @default("PENDING") @db.VarChar(30)
+  importStatus        String   @default("PENDING") @db.VarChar(30)
+  validationErrors    Json?
+  rawPayload          Json?
+  mappedAccountId     String?  @db.Char(36)
+  mappedDepartmentId  String?  @db.Char(36)
+  journalEntryId      String?  @db.Char(36)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company             Company         @relation(fields: [companyId], references: [id])
+  batch               PmsImportBatch  @relation(fields: [batchId], references: [id])
+
+  @@unique([companyId, sourceTransactionId, sourceType], map: "pms_import_tx_company_source_key")
+  @@index([batchId], map: "pms_import_tx_batch_idx")
+  @@index([companyId, validationStatus], map: "pms_import_tx_company_status_idx")
+  @@map("pms_import_transactions")
+}
+
+model PmsReconciliation {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  companyId           String   @db.Char(36)
+  batchId             String?  @db.Char(36)
+  pmsConnectionId     String?  @db.Char(36)
+  businessDate        DateTime @db.Date
+  pmsTotal            Decimal  @default("0.00") @db.Decimal(18, 2)
+  importedTotal       Decimal  @default("0.00") @db.Decimal(18, 2)
+  postedTotal         Decimal  @default("0.00") @db.Decimal(18, 2)
+  difference          Decimal  @default("0.00") @db.Decimal(18, 2)
+  status              String   @default("OPEN") @db.VarChar(30)
+  notes               String?  @db.Text
+  createdBy           String?  @db.Char(36)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company             Company         @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, businessDate])
+  @@map("pms_reconciliations")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String?  @db.Char(36)
+  action     String   @db.VarChar(100)
+  module     String   @db.VarChar(50)
+  entityType String?  @db.VarChar(100)
+  entityId   String?  @db.VarChar(36)
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?  @db.VarChar(45)
+  userAgent  String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemConfiguration {
+  id          String   @id @default(uuid()) @db.Char(36)
+  companyId   String?  @db.Char(36)
+  key         String   @db.VarChar(100)
+  value       String   @db.Text
+  description String?  @db.VarChar(255)
+  isEncrypted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company? @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, key])
+  @@index([companyId])
+  @@map("system_configurations")
+}
