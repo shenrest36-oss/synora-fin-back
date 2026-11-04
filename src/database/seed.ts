@@ -112,11 +112,18 @@ export async function seedDefaultData(): Promise<void> {
     { code: 'SYSTEM_CONFIG_UPDATE', module: 'SYSTEM', name: 'Update System Configuration' },
   ];
 
-  for (const perm of permissions) {
-    await prisma.permission.upsert({
-      where: { code: perm.code },
-      update: { name: perm.name, module: perm.module },
-      create: perm,
+  const existingPermissions = await prisma.permission.findMany({
+    select: { code: true },
+  });
+  const existingPermissionCodes = new Set(existingPermissions.map((item) => item.code));
+  const missingPermissions = permissions.filter(
+    (perm) => !existingPermissionCodes.has(perm.code),
+  );
+
+  if (missingPermissions.length > 0) {
+    await prisma.permission.createMany({
+      data: missingPermissions,
+      skipDuplicates: true,
     });
   }
 

@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { config } from './config/env';
+import { config, isAllowedCorsOrigin } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import apiRoutes from './routes/index';
@@ -14,14 +14,24 @@ const app = express();
 app.use(helmet());
 
 // CORS
+const allowedOrigins = config.cors.origin;
 app.use(
   cors({
-    origin: config.cors.origin,
+    origin: (origin, callback) => {
+      if (isAllowedCorsOrigin(origin, allowedOrigins)) {
+        callback(null, origin ?? true);
+        return;
+      }
+
+      callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 204,
   }),
 );
+
 
 // Rate limiting
 app.use(
